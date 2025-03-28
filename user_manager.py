@@ -182,16 +182,36 @@ class UserManager:
             return True
         return False
     
-    def get_user_preference(self, user_id, preference, default=None):
-        """Get a user preference with optional default value"""
+    def get_user_preference(self, user_id, preference_key, default=None):
+        """Get a user preference"""
         user_id = str(user_id)
-        if user_id in self.users:
-            return self.users[user_id].get("preferences", {}).get(preference, default)
+        if user_id in self.users and 'preferences' in self.users[user_id]:
+            return self.users[user_id]['preferences'].get(preference_key, default)
         return default
     
-    def set_user_preference(self, user_id, preference, value):
-        """Set a user preference (alias for update_user_preference)"""
-        return self.update_user_preference(user_id, preference, value)
+    def set_user_preference(self, user_id, preference_key, value):
+        """Set a user preference"""
+        user_id = str(user_id)
+        if user_id not in self.users:
+            self.register_user(user_id)
+        
+        if 'preferences' not in self.users[user_id]:
+            self.users[user_id]['preferences'] = {}
+        
+        self.users[user_id]['preferences'][preference_key] = value
+        self.save_users()
+        return True
+    
+    def get_users_by_preference(self, preference_key, preference_value):
+        """Get list of users with a specific preference value"""
+        matching_users = []
+        
+        for user_id, user_data in self.users.items():
+            if 'preferences' in user_data and preference_key in user_data['preferences']:
+                if user_data['preferences'][preference_key] == preference_value:
+                    matching_users.append(user_id)
+        
+        return matching_users
     
     def is_registered(self, user_id):
         """Check if a user is registered"""

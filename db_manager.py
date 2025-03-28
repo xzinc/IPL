@@ -633,3 +633,63 @@ class DatabaseManager:
                 # Redis connections are automatically closed
             except Exception as e:
                 logger.error(f"Error closing connection to {db_name}: {e}")
+    
+    def get_language_stats(self):
+        """Get statistics about language usage from interactions"""
+        language_stats = {'english': 0, 'telugu': 0, 'unknown': 0}
+        
+        try:
+            # Try to get stats from MongoDB
+            if 'mongodb' in self.db_connections:
+                try:
+                    # Aggregate language counts
+                    pipeline = [
+                        {"$group": {"_id": "$language", "count": {"$sum": 1}}},
+                        {"$sort": {"count": -1}}
+                    ]
+                    results = self.db_connections['mongodb']['collection'].aggregate(pipeline)
+                    
+                    for result in results:
+                        language = result['_id'] if result['_id'] else 'unknown'
+                        language_stats[language] = result['count']
+                    
+                    return language_stats
+                except Exception as e:
+                    logger.error(f"Error getting language stats from MongoDB: {e}")
+            
+            # Try to get stats from Redis
+            if 'redis' in self.db_connections:
+                try:
+                    # Get all interaction keys
+                    interaction_keys = self.db_connections['redis']['client'].keys('interaction:*')
+                    
+                    # Count languages
+                    for key in interaction_keys:
+                        interaction = self.db_connections['redis']['client'].get(key)
+                        if interaction:
+                            interaction = json.loads(interaction)
+                            language = interaction.get('language', 'unknown')
+                            language_stats[language] = language_stats.get(language, 0) + 1
+                    
+                    return language_stats
+                except Exception as e:
+                    logger.error(f"Error getting language stats from Redis: {e}")
+            
+            # Fall back to file storage
+            if self.fallback_to_file:
+                try:
+                    interactions_file = os.path.join(self.data_dir, 'interactions.json')
+                    if os.path.exists(interactions_file):
+                        with open(interactions_file, 'r', encoding='utf-8') as f:
+                            interactions = json.load(f)
+                            
+                            for interaction in interactions:
+                                language = interaction.get('language', 'unknown')
+                                language_stats[language] = language_stats.get(language, 0) + 1
+                except Exception as e:
+                    logger.error(f"Error getting language stats from file: {e}")
+        
+        except Exception as e:
+            logger.error(f"Error getting language stats: {e}")
+        
+        return language_stats

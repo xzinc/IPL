@@ -302,6 +302,19 @@ class AIEngine:
             original_message = message
             message = self.telugu_nlp.translate_to_english(message)
             logger.info(f"Translated Telugu message: '{original_message}' to '{message}'")
+            
+            # Set user preference to Telugu automatically
+            if user_id in self.user_preferences:
+                self.user_preferences[user_id]['language'] = 'telugu'
+            else:
+                self.user_preferences[user_id] = {'language': 'telugu'}
+            
+            # Save the updated preferences
+            self.save_user_preferences()
+        else:
+            # Check if user has Telugu preference set
+            user_prefs = self.user_preferences.get(user_id, {})
+            is_telugu = user_prefs.get('language', 'english') == 'telugu'
         
         # Extract entities from the message
         entities = self.extract_entities(message)
@@ -1011,31 +1024,45 @@ class AIEngine:
     
     def learn_from_interaction(self, user_id, message, response, feedback=None, chat_type="private", group_id=None):
         """Learn from user interactions to improve responses"""
-        # Store the interaction in the database manager
-        self.db_manager.store_interaction(
-            user_id=user_id,
-            message=message,
-            response=response,
-            chat_type=chat_type,
-            group_id=group_id,
-            feedback=feedback
-        )
+        user_id = str(user_id)
         
-        # Update user history for context in future conversations
+        # Extract language preference from message
+        is_telugu = self.telugu_nlp.detect_language(message)
+        if is_telugu and user_id in self.user_preferences:
+            self.user_preferences[user_id]['language'] = 'telugu'
+            self.save_user_preferences()
+        
+        # Update user history with the new interaction
         self.update_user_history(user_id, message, response)
         
-        # Extract user preferences from message
+        # Extract and update user preferences
         self.extract_user_preferences(user_id, message)
         
-        # Check if we should retrain models based on new data
-        # This is a simple implementation - in production you might want to 
-        # retrain on a schedule or when you have enough new data
-        interaction_count = len(self.db_manager.get_user_interactions(user_id, limit=1000))
-        if interaction_count > 0 and interaction_count % 100 == 0:
-            # Schedule model retraining after accumulating 100 new interactions
-            logger.info(f"Scheduling model retraining after {interaction_count} interactions")
-            # In a real implementation, you might want to use a task queue
-            # For simplicity, we'll just log it here
+        # Store the interaction in the database manager
+        interaction_data = {
+            'user_id': user_id,
+            'message': message,
+            'response': response,
+            'timestamp': datetime.now().isoformat(),
+            'feedback': feedback,
+            'chat_type': chat_type,
+            'language': 'telugu' if is_telugu else 'english'
+        }
+        
+        # Add group_id if present
+        if group_id:
+            interaction_data['group_id'] = str(group_id)
+        
+        # Store in database
+        self.db_manager.store_interaction(interaction_data)
+        
+        # Analyze message for learning
+        if feedback:
+            # If explicit feedback is provided, use it for learning
+            self._learn_from_feedback(user_id, message, response, feedback)
+        else:
+            # Otherwise, try to infer feedback from user's response
+            self._infer_learning_from_response(user_id, message, response)
     
     def is_prediction_request(self, message):
         """Check if the message is a prediction request"""

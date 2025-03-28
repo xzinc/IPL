@@ -72,6 +72,7 @@ def register_handlers(client, user_manager, admin_manager, ipl_data, ai_engine):
     client.add_event_handler(telugu_command_handler)
     client.add_event_handler(db_stats_handler)
     client.add_event_handler(db_switch_handler)
+    client.add_event_handler(language_stats_handler)
     
     # Register message handler (should be last to avoid conflicts)
     client.add_event_handler(handle_message)
@@ -283,6 +284,7 @@ async def admin_handler(event):
             "/telugu - Toggle Telugu language support for a user\n"
             "/db_stats - Show database statistics\n"
             "/db_switch - Switch active database\n"
+            "/language_stats - Show language usage statistics\n"
         )
         await event.respond(admin_panel)
     else:
@@ -377,62 +379,34 @@ async def update_data_handler(event):
 @events.register(events.NewMessage(pattern='/telugu'))
 async def telugu_command_handler(event):
     """Handle the /telugu command to toggle Telugu language support"""
-    user_id = event.sender_id
+    sender = await event.get_sender()
+    user_id = sender.id
     
-    # Check if there are arguments
-    message_text = event.message.text.strip()
-    parts = message_text.split(' ', 1)
+    # Get current language preference
+    current_lang = user_manager.get_user_preference(user_id, 'language', 'english')
     
-    if len(parts) > 1 and parts[1].strip().lower() in ['on', 'off']:
-        # Enable/disable Telugu for a specific user (admin only)
-        enable = parts[1].strip().lower() == 'on'
-        
-        if admin_manager.is_admin(user_id):
-            # Update user preference
-            if enable:
-                user_manager.set_user_preference(user_id, 'language', 'telugu')
-                await event.respond("తెలుగు భాష మద్దతు ఇప్పుడు ప్రారంభించబడింది. (Telugu language support is now enabled.)")
-            else:
-                user_manager.set_user_preference(user_id, 'language', 'english')
-                await event.respond("Telugu language support is now disabled.")
-        else:
-            await event.respond("⛔ You don't have admin privileges to change language settings.")
+    # Toggle language preference
+    if current_lang == 'telugu':
+        user_manager.set_user_preference(user_id, 'language', 'english')
+        await event.respond("Language preference changed to English.")
     else:
-        # Toggle Telugu support for the current user
-        current_lang = user_manager.get_user_preference(user_id, 'language', 'english')
+        user_manager.set_user_preference(user_id, 'language', 'telugu')
         
-        if current_lang == 'telugu':
-            user_manager.set_user_preference(user_id, 'language', 'english')
-            await event.respond("Telugu language support is now disabled.")
-        else:
-            user_manager.set_user_preference(user_id, 'language', 'telugu')
-            await event.respond("తెలుగు భాష మద్దతు ఇప్పుడు ప్రారంభించబడింది. (Telugu language support is now enabled.)")
-
-# Callback query handler for inline buttons
-@events.register(events.CallbackQuery())
-async def callback_handler(event):
-    """Handle callback queries from inline buttons"""
-    data = event.data.decode('utf-8')
-    user_id = event.sender_id
+        # Translate the confirmation message to Telugu
+        telugu_message = ai_engine.telugu_nlp.translate_to_telugu(
+            "Language preference changed to Telugu. I will now respond in Telugu when possible.", 
+            ipl_context=True
+        )
+        await event.respond(telugu_message)
     
-    if data == "stats":
-        stats = ipl_data.get_general_stats()
-        await event.edit(stats)
+    # Update AI engine user preferences
+    if str(user_id) in ai_engine.user_preferences:
+        ai_engine.user_preferences[str(user_id)]['language'] = user_manager.get_user_preference(user_id, 'language')
+    else:
+        ai_engine.user_preferences[str(user_id)] = {'language': user_manager.get_user_preference(user_id, 'language')}
     
-    elif data == "teams":
-        teams_info = ipl_data.get_all_teams()
-        await event.edit(teams_info)
-    
-    elif data == "players":
-        top_players = ipl_data.get_top_players()
-        await event.edit(top_players)
-    
-    elif data == "schedule":
-        schedule = ipl_data.get_schedule()
-        await event.edit(schedule)
-    
-    elif data == "help":
-        await help_handler(event)
+    # Save AI engine user preferences
+    ai_engine.save_user_preferences()
 
 # Message handler for natural conversations
 @events.register(events.NewMessage)
@@ -491,13 +465,17 @@ async def handle_message(event):
         if bot_mentioned:
             message_text = message_text.replace(f"@{bot_username}", "").strip()
     
-    # Generate response with team support and style settings
-    response = await ai_engine.generate_response(user_id, message_text, bot_config)
-    
-    # Send typing action
+    # Show typing indicator
     async with bot.action(event.chat_id, 'typing'):
+        # Generate response with team support and style settings
+        response = await ai_engine.generate_response(user_id, message_text, bot_config)
+        
         # Add a small delay to simulate thinking/typing
-        await asyncio.sleep(len(response) * 0.01)  # Adjust delay based on response length
+        response_length = len(response)
+        typing_delay = min(response_length * 0.01, 3)  # Cap at 3 seconds
+        await asyncio.sleep(typing_delay)
+        
+        # Send response
         await event.respond(response)
     
     # Log the interaction with chat type and group ID
@@ -508,6 +486,32 @@ async def handle_message(event):
         chat_type=chat_type,
         group_id=group_id
     )
+
+# Callback query handler for inline buttons
+@events.register(events.CallbackQuery())
+async def callback_handler(event):
+    """Handle callback queries from inline buttons"""
+    data = event.data.decode('utf-8')
+    user_id = event.sender_id
+    
+    if data == "stats":
+        stats = ipl_data.get_general_stats()
+        await event.edit(stats)
+    
+    elif data == "teams":
+        teams_info = ipl_data.get_all_teams()
+        await event.edit(teams_info)
+    
+    elif data == "players":
+        top_players = ipl_data.get_top_players()
+        await event.edit(top_players)
+    
+    elif data == "schedule":
+        schedule = ipl_data.get_schedule()
+        await event.edit(schedule)
+    
+    elif data == "help":
+        await help_handler(event)
 
 # Add a new command to show database stats
 @events.register(events.NewMessage(pattern='/db_stats'))
@@ -578,6 +582,38 @@ async def db_switch_handler(event):
         await event.respond(f"✅ Switched active database to {db_name}")
     else:
         await event.respond(f"⚠️ Database {db_name} is not connected")
+
+# Add a new command to get language stats
+@events.register(events.NewMessage(pattern='/language_stats'))
+async def language_stats_handler(event):
+    """Handle the /language_stats command to show language usage statistics"""
+    sender = await event.get_sender()
+    user_id = sender.id
+    
+    # Check if user is an admin
+    if not admin_manager.is_admin(user_id):
+        await event.respond("⚠️ This command is only available to administrators.")
+        return
+    
+    # Get language statistics from database
+    language_stats = db_manager.get_language_stats()
+    
+    # Format stats message
+    message = "📊 **Language Usage Statistics**\n\n"
+    
+    total_interactions = sum(language_stats.values())
+    
+    for language, count in language_stats.items():
+        percentage = (count / total_interactions) * 100 if total_interactions > 0 else 0
+        message += f"• **{language.capitalize()}**: {count} interactions ({percentage:.1f}%)\n"
+    
+    message += f"\n**Total**: {total_interactions} interactions"
+    
+    # Get users with Telugu preference
+    telugu_users = user_manager.get_users_by_preference('language', 'telugu')
+    message += f"\n\n**Users with Telugu preference**: {len(telugu_users)}"
+    
+    await event.respond(message)
 
 # Main function to run the bot
 async def main():

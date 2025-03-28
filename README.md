@@ -218,6 +218,50 @@ Once added to a group, the bot will:
 - Respond when someone replies to its messages
 - Learn from group interactions to provide better responses
 
+## Enhanced Telugu Language Support
+
+The IPL Bot now features automatic Telugu language detection and response capabilities, making it more accessible to Telugu-speaking users.
+
+### Automatic Language Detection
+
+- **Automatic Detection**: The bot automatically detects when a user sends a message in Telugu
+- **Preference Setting**: When Telugu is detected, the bot automatically sets the user's language preference to Telugu
+- **Seamless Responses**: The bot responds in Telugu without requiring any commands or settings changes
+
+### Telugu Language Features
+
+1. **Natural Conversations**
+   - Users can chat with the bot in Telugu about IPL cricket
+   - The bot understands Telugu questions about matches, teams, and players
+   - Responses are provided in fluent Telugu with cricket terminology
+
+2. **IPL-Specific Translations**
+   - The bot includes specialized translations for IPL cricket terms
+   - Team names, player positions, and cricket terminology are properly translated
+   - Match predictions and statistics are available in Telugu
+
+3. **Mixed Language Support**
+   - Users can switch between Telugu and English at any time
+   - The bot remembers each user's language preference
+   - Manual language switching is available via the `/telugu` command
+
+### Admin Language Analytics
+
+Administrators can track language usage with the new `/language_stats` command, which provides:
+
+- Percentage of interactions in each language
+- Total number of Telugu-speaking users
+- Language usage trends over time
+
+### Technical Implementation
+
+The Telugu language support is implemented using:
+
+- Unicode character detection for identifying Telugu text
+- A specialized Telugu NLP module with cricket terminology
+- Automatic translation between Telugu and English
+- Database storage of language preferences and interactions
+
 ## Kaggle API Configuration
 
 The bot uses Kaggle datasets for IPL statistics. To enable this feature, you need to set up Kaggle API credentials:
@@ -360,25 +404,6 @@ MongoDB is better suited when:
 - Advanced relationships between entities must be modeled
 
 Use the `/db_compare` admin command to benchmark performance in your environment.
-
-## Telugu Language Support
-
-The bot includes natural language processing capabilities for Telugu, one of India's major languages:
-
-- **Language Detection**: Automatically detects when users write in Telugu
-- **Translation**: Translates Telugu queries to English for processing and English responses back to Telugu
-- **IPL-Specific Vocabulary**: Handles cricket and IPL terminology in Telugu
-- **User Preferences**: Users can set their language preference with the `/telugu` command
-
-The Telugu NLP module uses a specialized dataset for cricket terminology and leverages machine learning for improved translations.
-
-## Customization
-
-- Modify `ipl_data.py` to update team and player information
-- Adjust conversation model parameters in `ai_engine.py`
-- Add new commands in `bot.py`
-- Customize team performance data in `models/team_performance.json`
-- Update venue statistics in `models/venue_stats.json`
 
 ## License
 
