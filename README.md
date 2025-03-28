@@ -19,6 +19,8 @@ A sophisticated Telegram bot built with Telethon that provides IPL (Indian Premi
 - **External Data Sources**: Integration with GitHub and Kaggle datasets for comprehensive IPL statistics
 - **Intelligent Caching**: Automatic data refresh mechanism to ensure up-to-date information
 - **Telugu Language Support**: Interact with the bot in Telugu language
+- **Multi-Database Support**: Automatic database failover and learning from user interactions across multiple databases
+- **Group Chat Intelligence**: Responds only when mentioned or replied to in group chats and learns from group interactions
 
 ## Setup Instructions
 
@@ -154,6 +156,67 @@ The bot supports both Redis and MongoDB for data storage. You can configure the 
 ### Testing Database Connection
 
 You can verify your database connection by running the bot and checking the logs. On startup, the bot will attempt to connect to the configured database and log the result.
+
+## Multi-Database Support for Machine Learning
+
+The IPL Bot now features an advanced multi-database system that automatically manages user interactions across multiple databases. This enables the bot to learn from user conversations while optimizing for free database plans.
+
+### How It Works
+
+1. **Automatic Database Failover**
+   - The bot can use multiple databases simultaneously
+   - When one database reaches its storage limit, the bot automatically switches to the next available database
+   - Supports both MongoDB and Redis databases in parallel
+   - Falls back to file storage if all databases are unavailable
+
+2. **Configuration**
+   - Primary database: Set with `MONGODB_URI` or `REDIS_URL` environment variables
+   - Secondary database: Set with `SECONDARY_MONGODB_URI` environment variable
+   - Additional databases can be configured in the `db_config.json` file
+
+3. **Admin Commands**
+   - `/db_stats` - View statistics for all configured databases
+   - `/db_switch <database_name>` - Manually switch the active database
+
+### Learning from User Interactions
+
+The bot uses stored interactions to improve its responses over time:
+
+1. **Data Collection**
+   - Stores user messages and bot responses
+   - Tracks interaction context (private chat, group chat)
+   - Analyzes patterns in user questions and preferences
+
+2. **Adaptive Responses**
+   - Learns from past conversations to improve future responses
+   - Adapts to user preferences and interests
+   - Provides more personalized predictions based on interaction history
+
+3. **Group Chat Intelligence**
+   - Responds only when mentioned or replied to in group chats
+   - Learns from group interactions to improve responses for all users
+   - Maintains separate context for private and group conversations
+
+### Privacy and Data Optimization
+
+- User data is stored efficiently to maximize free database plans
+- Older interactions are automatically pruned to save space
+- All data is used only to improve bot responses
+
+### Adding the Bot to Groups
+
+To add the IPL Bot to your Telegram group:
+
+1. Open your group in Telegram
+2. Click on the group name at the top
+3. Select "Add members"
+4. Search for the bot by username
+5. Select the bot and click "Add"
+
+Once added to a group, the bot will:
+- Respond when mentioned with @botusername
+- Respond when someone replies to its messages
+- Learn from group interactions to provide better responses
 
 ## Kaggle API Configuration
 

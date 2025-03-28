@@ -36,6 +36,11 @@
       "value": "mongodb://localhost:27017/iplbot",
       "required": false
     },
+    "SECONDARY_MONGODB_URI": {
+      "description": "Secondary MongoDB connection URI for multi-database support",
+      "required": false,
+      "value": ""
+    },
     "KAGGLE_USERNAME": {
       "description": "Kaggle username for dataset access",
       "required": false

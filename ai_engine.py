@@ -15,6 +15,7 @@ from nltk.corpus import stopwords
 import random
 import time
 from telugu_nlp import TeluguNLP
+from db_manager import DatabaseManager
 
 # Configure logging
 logging.basicConfig(
@@ -35,6 +36,9 @@ class AIEngine:
         """Initialize the AI Engine with necessary models and data"""
         self.model_dir = os.path.join(os.path.dirname(__file__), 'models')
         os.makedirs(self.model_dir, exist_ok=True)
+        
+        # Initialize database manager for storing interactions
+        self.db_manager = DatabaseManager()
         
         # Initialize NLTK resources
         try:
@@ -1005,19 +1009,34 @@ class AIEngine:
             team1, team2, team1_prob, team2_prob, venue, bot_config["supported_team"]
         )
     
-    def learn_from_interaction(self, user_id, message, response, feedback=None):
+    def learn_from_interaction(self, user_id, message, response, feedback=None, chat_type="private", group_id=None):
         """Learn from user interactions to improve responses"""
-        # This is a placeholder for the learning mechanism
-        # In a real implementation, you would update your models based on interactions
-        pass
+        # Store the interaction in the database manager
+        self.db_manager.store_interaction(
+            user_id=user_id,
+            message=message,
+            response=response,
+            chat_type=chat_type,
+            group_id=group_id,
+            feedback=feedback
+        )
+        
+        # Update user history for context in future conversations
+        self.update_user_history(user_id, message, response)
+        
+        # Extract user preferences from message
+        self.extract_user_preferences(user_id, message)
+        
+        # Check if we should retrain models based on new data
+        # This is a simple implementation - in production you might want to 
+        # retrain on a schedule or when you have enough new data
+        interaction_count = len(self.db_manager.get_user_interactions(user_id, limit=1000))
+        if interaction_count > 0 and interaction_count % 100 == 0:
+            # Schedule model retraining after accumulating 100 new interactions
+            logger.info(f"Scheduling model retraining after {interaction_count} interactions")
+            # In a real implementation, you might want to use a task queue
+            # For simplicity, we'll just log it here
     
-    def retrain_models(self):
-        """Retrain AI models with new data"""
-        # This is a placeholder for model retraining
-        # In a real implementation, you would retrain your models with new data
-        logger.info("Model retraining initiated")
-        return "Model retraining has been initiated. This may take some time."
-
     def is_prediction_request(self, message):
         """Check if the message is a prediction request"""
         keywords = ["predict", "prediction", "chances", "win", "outcome"]
@@ -1055,3 +1074,10 @@ class AIEngine:
         # This is a placeholder for the conversational response generation
         # In a real implementation, you would use a conversational AI model
         return "I'm not sure I understand. You can ask me about IPL teams, players, stats, or use commands like /help to see what I can do."
+
+    def retrain_models(self):
+        """Retrain AI models with new data"""
+        # This is a placeholder for model retraining
+        # In a real implementation, you would retrain your models with new data
+        logger.info("Model retraining initiated")
+        return "Model retraining has been initiated. This may take some time."

@@ -13,6 +13,7 @@ from ai_engine import AIEngine
 from ipl_data import IPLData
 from user_manager import UserManager
 from admin_manager import AdminManager
+from db_manager import DatabaseManager
 
 # Configure logging
 logging.basicConfig(
@@ -39,6 +40,7 @@ ai_engine = AIEngine()
 ipl_data = IPLData()
 user_manager = UserManager()
 admin_manager = AdminManager(ADMIN_IDS)
+db_manager = ai_engine.db_manager  # Use the same db_manager instance from ai_engine
 
 # Main function to register all handlers
 def register_handlers(client, user_manager, admin_manager, ipl_data, ai_engine):
@@ -68,6 +70,8 @@ def register_handlers(client, user_manager, admin_manager, ipl_data, ai_engine):
     client.add_event_handler(db_explain_handler)
     client.add_event_handler(update_data_handler)
     client.add_event_handler(telugu_command_handler)
+    client.add_event_handler(db_stats_handler)
+    client.add_event_handler(db_switch_handler)
     
     # Register message handler (should be last to avoid conflicts)
     client.add_event_handler(handle_message)
@@ -277,6 +281,8 @@ async def admin_handler(event):
             "/db_compare - Compare Redis and MongoDB performance\n"
             "/db_explain - Get explanation of database choice\n"
             "/telugu - Toggle Telugu language support for a user\n"
+            "/db_stats - Show database statistics\n"
+            "/db_switch - Switch active database\n"
         )
         await event.respond(admin_panel)
     else:
@@ -456,6 +462,35 @@ async def handle_message(event):
     # Get user language preference
     user_lang = user_manager.get_user_preference(user_id, 'language', 'english')
     
+    # Determine chat type and get group ID if applicable
+    chat_type = "private"
+    group_id = None
+    
+    if event.is_group or event.is_channel:
+        chat_type = "group" if event.is_group else "channel"
+        group_id = event.chat_id
+        
+        # Only respond in groups if the bot is mentioned or replied to
+        bot_username = (await bot.get_me()).username
+        bot_mentioned = f"@{bot_username}" in message_text
+        replied_to_bot = False
+        
+        if event.reply_to:
+            try:
+                replied_msg = await event.get_reply_message()
+                if replied_msg and replied_msg.sender_id == bot.uid:
+                    replied_to_bot = True
+            except:
+                pass
+        
+        # Skip if not mentioned or replied to in a group
+        if not bot_mentioned and not replied_to_bot and chat_type != "private":
+            return
+        
+        # Remove bot username from message if mentioned
+        if bot_mentioned:
+            message_text = message_text.replace(f"@{bot_username}", "").strip()
+    
     # Generate response with team support and style settings
     response = await ai_engine.generate_response(user_id, message_text, bot_config)
     
@@ -465,8 +500,84 @@ async def handle_message(event):
         await asyncio.sleep(len(response) * 0.01)  # Adjust delay based on response length
         await event.respond(response)
     
-    # Log the interaction
-    ai_engine.learn_from_interaction(user_id, message_text, response)
+    # Log the interaction with chat type and group ID
+    ai_engine.learn_from_interaction(
+        user_id=user_id, 
+        message=message_text, 
+        response=response,
+        chat_type=chat_type,
+        group_id=group_id
+    )
+
+# Add a new command to show database stats
+@events.register(events.NewMessage(pattern='/db_stats'))
+async def db_stats_handler(event):
+    """Handle the /db_stats command to show database statistics"""
+    sender = await event.get_sender()
+    user_id = sender.id
+    
+    # Check if user is an admin
+    if not admin_manager.is_admin(user_id):
+        await event.respond("⚠️ This command is only available to administrators.")
+        return
+    
+    # Get database stats
+    stats = db_manager.get_database_stats()
+    active_db = db_manager.get_active_database()
+    
+    # Format stats message
+    message = "📊 **Database Statistics**\n\n"
+    message += f"🔵 **Active Database**: {active_db}\n\n"
+    
+    for db_name, db_stats in stats.items():
+        status_emoji = "✅" if db_stats["status"] == "connected" else "❌"
+        message += f"{status_emoji} **{db_name}**:\n"
+        message += f"  • Status: {db_stats['status']}\n"
+        message += f"  • Size: {db_stats['size_mb']:.2f} MB\n"
+        message += f"  • Documents: {db_stats['document_count']}\n"
+        message += f"  • Last Updated: {db_stats['last_updated']}\n"
+        message += f"  • Error Count: {db_stats['error_count']}\n"
+        if db_stats["last_error"]:
+            message += f"  • Last Error: {db_stats['last_error']}\n"
+        message += "\n"
+    
+    await event.respond(message)
+
+# Add a new command to switch active database
+@events.register(events.NewMessage(pattern='/db_switch'))
+async def db_switch_handler(event):
+    """Handle the /db_switch command to switch the active database"""
+    sender = await event.get_sender()
+    user_id = sender.id
+    
+    # Check if user is an admin
+    if not admin_manager.is_admin(user_id):
+        await event.respond("⚠️ This command is only available to administrators.")
+        return
+    
+    # Get command arguments
+    args = event.message.text.split()
+    if len(args) < 2:
+        await event.respond("⚠️ Please specify a database name. Usage: /db_switch <database_name>")
+        return
+    
+    db_name = args[1]
+    
+    # Get available databases
+    stats = db_manager.get_database_stats()
+    
+    if db_name not in stats:
+        available_dbs = ", ".join(stats.keys())
+        await event.respond(f"⚠️ Unknown database: {db_name}. Available databases: {available_dbs}")
+        return
+    
+    # Try to switch database
+    if db_name in db_manager.db_connections:
+        db_manager.active_db = db_name
+        db_manager.fallback_to_file = False
+        await event.respond(f"✅ Switched active database to {db_name}")
+    else:
+        await event.respond(f"⚠️ Database {db_name} is not connected")
 
 # Main function to run the bot
 async def main():
