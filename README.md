@@ -100,6 +100,61 @@ You can deploy this bot to Heroku with one click using the button below:
    heroku ps:scale web=1
    ```
 
+## Database Configuration
+
+### Setting Up Database Connection
+
+The bot supports both Redis and MongoDB for data storage. You can configure the database connection in one of the following ways:
+
+1. **Environment Variables (.env file)**
+   - For local development, configure the database in your `.env` file:
+   ```
+   # Choose database type
+   DB_TYPE=redis  # Options: redis, mongodb, none
+   
+   # Redis connection (if using Redis)
+   REDIS_URL=redis://localhost:6379/0
+   
+   # MongoDB connection (if using MongoDB)
+   MONGODB_URI=mongodb://localhost:27017/iplbot
+   ```
+
+2. **Heroku Environment Variables**
+   - When deploying to Heroku using the one-click deploy button, you'll be prompted to enter these values
+   - The app.json configuration will automatically set up the required add-ons and environment variables
+   - If you're using the Heroku Redis add-on, the REDIS_URL will be automatically configured
+
+3. **Manual Configuration in Heroku Dashboard**
+   - Go to your app's dashboard in Heroku
+   - Navigate to Settings → Config Vars
+   - Add the following variables:
+     - `DB_TYPE`: Set to `redis` or `mongodb`
+     - `REDIS_URL`: Your Redis connection URL (if using Redis)
+     - `MONGODB_URI`: Your MongoDB connection URI (if using MongoDB)
+
+### Database Recommendations
+
+- **Redis** (Recommended for most users)
+  - Faster response times for simple data retrieval
+  - Simpler setup and maintenance
+  - Works well with Heroku's Redis add-on
+  - Example URL format: `redis://username:password@host:port/db_number`
+
+- **MongoDB**
+  - Better for complex data queries and relationships
+  - More flexible schema
+  - Example URI format: `mongodb://username:password@host:port/database`
+  - For MongoDB Atlas: `mongodb+srv://username:password@cluster.mongodb.net/database`
+
+- **No Database** (`DB_TYPE=none`)
+  - Falls back to file-based storage
+  - Not recommended for production use
+  - Useful for testing or development without database setup
+
+### Testing Database Connection
+
+You can verify your database connection by running the bot and checking the logs. On startup, the bot will attempt to connect to the configured database and log the result.
+
 ## Bot Commands
 
 - `/start` - Start the bot

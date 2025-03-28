@@ -26,6 +26,16 @@
       "value": "redis",
       "required": true
     },
+    "REDIS_URL": {
+      "description": "Redis connection URL (required if DB_TYPE is redis)",
+      "value": "redis://localhost:6379/0",
+      "required": false
+    },
+    "MONGODB_URI": {
+      "description": "MongoDB connection URI (required if DB_TYPE is mongodb)",
+      "value": "mongodb://localhost:27017/iplbot",
+      "required": false
+    },
     "KAGGLE_USERNAME": {
       "description": "Kaggle username for dataset access",
       "required": false
