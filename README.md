@@ -155,6 +155,45 @@ The bot supports both Redis and MongoDB for data storage. You can configure the 
 
 You can verify your database connection by running the bot and checking the logs. On startup, the bot will attempt to connect to the configured database and log the result.
 
+## Kaggle API Configuration
+
+The bot uses Kaggle datasets for IPL statistics. To enable this feature, you need to set up Kaggle API credentials:
+
+### Getting Your Kaggle API Key
+
+1. **Create a Kaggle Account**
+   - Visit [Kaggle.com](https://www.kaggle.com/) and sign up for an account if you don't have one
+
+2. **Generate an API Token**
+   - Log in to your Kaggle account
+   - Go to your account settings page (click on your profile picture → Account)
+   - Scroll down to the "API" section
+   - Click "Create New API Token"
+   - This will download a `kaggle.json` file containing your API credentials
+
+3. **Extract Your Credentials**
+   - Open the downloaded `kaggle.json` file
+   - It contains two values:
+     ```json
+     {
+       "username": "your_kaggle_username",
+       "key": "your_kaggle_api_key"
+     }
+     ```
+
+4. **Configure the Bot**
+   - Add these credentials to your environment variables:
+     - For local development, add to your `.env` file:
+       ```
+       KAGGLE_USERNAME=your_kaggle_username
+       KAGGLE_KEY=your_kaggle_api_key
+       ```
+     - For Heroku deployment, add as Config Vars in your app settings or during the one-click deployment process
+
+### Why Kaggle Credentials Are Needed
+
+The bot uses the Kaggle API to download and update IPL datasets, which provide comprehensive statistics for teams, players, and matches. Without these credentials, the bot will fall back to default data, which may be less accurate or up-to-date.
+
 ## Bot Commands
 
 - `/start` - Start the bot
