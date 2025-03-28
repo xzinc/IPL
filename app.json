@@ -1,0 +1,65 @@
+{
+  "name": "IPL Telegram Bot",
+  "description": "A Telegram bot for IPL cricket with AI-powered predictions, Telugu language support, and database integration",
+  "repository": "https://github.com/yourusername/ipl-telegram-bot",
+  "logo": "https://raw.githubusercontent.com/yourusername/ipl-telegram-bot/main/assets/logo.png",
+  "keywords": ["python", "telegram", "bot", "ipl", "cricket", "telugu", "ai"],
+  "env": {
+    "API_ID": {
+      "description": "Telegram API ID from my.telegram.org",
+      "required": true
+    },
+    "API_HASH": {
+      "description": "Telegram API Hash from my.telegram.org",
+      "required": true
+    },
+    "BOT_TOKEN": {
+      "description": "Bot token from @BotFather",
+      "required": true
+    },
+    "ADMIN_IDS": {
+      "description": "Comma-separated list of admin user IDs",
+      "required": true
+    },
+    "DB_TYPE": {
+      "description": "Database type (redis, mongodb, none)",
+      "value": "redis",
+      "required": true
+    },
+    "KAGGLE_USERNAME": {
+      "description": "Kaggle username for dataset access",
+      "required": false
+    },
+    "KAGGLE_KEY": {
+      "description": "Kaggle API key for dataset access",
+      "required": false
+    },
+    "LOG_LEVEL": {
+      "description": "Logging level (INFO, DEBUG, etc.)",
+      "value": "INFO",
+      "required": false
+    },
+    "WEBHOOK_URL": {
+      "description": "Webhook URL for Telegram (leave empty for polling)",
+      "required": false
+    }
+  },
+  "addons": [
+    {
+      "plan": "heroku-redis:hobby-dev",
+      "as": "REDIS"
+    }
+  ],
+  "buildpacks": [
+    {
+      "url": "heroku/python"
+    }
+  ],
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "size": "eco"
+    }
+  },
+  "success_url": "/"
+}
